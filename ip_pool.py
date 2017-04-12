@@ -30,13 +30,13 @@ logging.basicConfig(filename=log_file, level=logging.WARNING)
 
 # postgresql config
 config = {
-    'database': 'proxy',
+    'database': 'fdc_development',
     'user': 'postgres',
     'password': 'postgres',
     'host': '127.0.0.1',
     'port': 5432
 }
-TABLE_NAME = 'valid_ip'
+TABLE_NAME = 'valid_ips'
 # conn = mdb.connect(**config)
 # cursor = conn.cursor()
 
@@ -289,11 +289,11 @@ def get_all_ip(page, conn):
             ip_list.append(item)
 
     # cn-proxy
-    print ">>>>>cnproxy<<<<"
-    cnproxy_ip = get_cnip(conn)
-    if len(cnproxy_ip) != 0:
-        for j in cnproxy_ip:
-            ip_list.append(j)
+    # print ">>>>>cnproxy<<<<"
+    # cnproxy_ip = get_cnip(conn)
+    # if len(cnproxy_ip) != 0:
+    #     for j in cnproxy_ip:
+    #         ip_list.append(j)
 
     # kuaidaili
     print ">>>>>kuaidaili<<<<"
@@ -399,7 +399,7 @@ def store(page):
         try:
             ipExist = cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, item))
             if not ipExist:
-                n = cursor.execute('INSERT INTO %s VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0)' % (TABLE_NAME, item))
+                n = cursor.execute('INSERT INTO %s (content, test_times, failure_times, success_rate, avg_response_time, score, created_at, updated_at) VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0, now(), now())' % (TABLE_NAME, item))
                 conn.commit()
                 if n:
                     logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item + \
@@ -420,7 +420,7 @@ def store(page):
 
 def main():
     while True:
-        store(3)
+        store(1)
         time.sleep(24*3600)
 
 if __name__ == '__main__':

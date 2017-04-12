@@ -27,13 +27,13 @@ import psycopg2 as mdb
 # }
 # postgresql config
 config = {
-    'database': 'proxy',
+    'database': 'fdc_development',
     'user': 'postgres',
     'password': 'postgres',
     'host': '127.0.0.1',
     'port': 5432
 }
-TABLE_NAME = 'valid_ip'
+TABLE_NAME = 'valid_ips'
 
 log_file = 'assess_logger.log'
 logging.basicConfig(filename=log_file, level=logging.WARNING)
