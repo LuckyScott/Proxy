@@ -13,14 +13,25 @@ import logging
 import pymysql as mdb
 # import MySQLdb as mdb
 
+# use postgresql
+import psycopg2 as mdb
+
 # database config
+# config = {
+#     'host': '127.0.0.1',
+#     'port': 3306,
+#     'user': 'root',
+#     'passwd': '*****',
+#     'db': 'proxy',
+#     'charset': 'utf8'
+# }
+# postgresql config
 config = {
+    'database': 'proxy',
+    'user': 'postgres',
+    'password': 'postgres',
     'host': '127.0.0.1',
-    'port': 3306,
-    'user': 'root',
-    'passwd': '*****',
-    'db': 'proxy',
-    'charset': 'utf8'
+    'port': 5432
 }
 TABLE_NAME = 'valid_ip'
 
