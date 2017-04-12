@@ -7,8 +7,11 @@ import random
 import logging
 from bs4 import BeautifulSoup
 from lxml import etree
-import pymysql as mdb
+# import pymysql as mdb
 # import MySQLdb as mdb
+
+# use postgresql
+import psycopg2 as mdb
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -16,13 +19,22 @@ log_file = 'acquire_logger.log'
 logging.basicConfig(filename=log_file, level=logging.WARNING)
 
 # database config
+# config = {
+#     'host': '127.0.0.1',
+#     'port': 3306,
+#     'user': 'root',
+#     'passwd': '*****',
+#     'db': 'proxy',
+#     'charset': 'utf8'
+# }
+
+# postgresql config
 config = {
+    'database': 'proxy',
+    'user': 'postgres',
+    'password': 'postgres',
     'host': '127.0.0.1',
-    'port': 3306,
-    'user': 'root',
-    'passwd': '*****',
-    'db': 'proxy',
-    'charset': 'utf8'
+    'port': 5432
 }
 TABLE_NAME = 'valid_ip'
 # conn = mdb.connect(**config)
@@ -315,7 +327,7 @@ def get_valid_proxies(proxies, timeout):
         if succeed:
             print 'succeed: '+p+'\t'+str(end-start)
             results.append(p)
-        time.sleep(0.5)  # Avoid frequently crawling
+        time.sleep(0.2)  # 0.5 # Avoid frequently crawling
     results = list(set(results))
     return results
 
@@ -378,7 +390,8 @@ def store(page):
         except Exception as e:
             logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + \
                           " Use proxy to crawl web error! " + str(e))
-    proxies = get_proxies(page, 3, 2.5, 1200, conn)  # 6, 5, 2.5, 1200
+    # proxies = get_proxies(page, 3, 2.5, 1200, conn)  # 6, 5, 2.5, 1200
+    proxies = get_proxies(page, 3, 2, 300, conn)   # sleep 5 minutes  per round
     print "\n\n\n"
     print ">>>>>>>>>>>>>>>>>>>The Final Ip<<<<<<<<<<<<<<<<<<<<<<"
     for item in proxies:
@@ -386,7 +399,7 @@ def store(page):
         try:
             ipExist = cursor.execute('SELECT * FROM %s WHERE content= "%s"' % (TABLE_NAME, item))
             if not ipExist:
-                n = cursor.execute('INSERT INTO %s VALUES ("%s", 1, 0, 0, 1.0, 2.5, 0.0)' % (TABLE_NAME, item))
+                n = cursor.execute('INSERT INTO %s VALUES ("%s", 1, 0, 1.0, 2.5, 0.0)' % (TABLE_NAME, item))
                 conn.commit()
                 if n:
                     logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item + \
