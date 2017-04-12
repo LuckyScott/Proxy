@@ -10,7 +10,7 @@ import requests
 import time
 import datetime
 import logging
-import pymysql as mdb
+# import pymysql as mdb
 # import MySQLdb as mdb
 
 # use postgresql

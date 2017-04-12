@@ -3,6 +3,12 @@
 
 ### 提示
 
+需要安装的python 库：
+requests
+bs4
+lxml
+psycopg2
+
 你需要先自行创建数据库， 格式为：
 
 * content				varchar(30)
@@ -11,6 +17,17 @@
 * success_rate	 		float
 * avg_response_time	    float
 * score				    float
+
+修改数据库连接配置： config
+```python
+config = {
+    'database': 'proxy',
+    'user': 'postgres',
+    'password': 'postgres',
+    'host': '127.0.0.1',
+    'port': 5432
+}
+```
 
 ### 简介
 
