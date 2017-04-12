@@ -52,7 +52,7 @@ def modify_score(ip, type, time, conn):
         logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + ip + \
                         " out of time")
         try:
-            cursor.execute('SELECT * FROM %s WHERE content= "%s"' % (TABLE_NAME, ip))
+            cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, ip))
             q_result = cursor.fetchall()
             for r in q_result:
                 test_times = r[1] + 1
@@ -61,7 +61,7 @@ def modify_score(ip, type, time, conn):
                 avg_response_time = r[4]
                 score = r[5]
                 if failure_times > 4 and success_rate < SUCCESS_RATE:
-                    cursor.execute('DELETE FROM %s WHERE content= "%s"' % (TABLE_NAME, ip))
+                    cursor.execute('DELETE FROM %s WHERE content= \'%s\'' % (TABLE_NAME, ip))
                     conn.commit()
                     logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + ip + \
                                     " was deleted.")
@@ -71,7 +71,7 @@ def modify_score(ip, type, time, conn):
                     success_rate = 1 - float(failure_times) / test_times
                     avg_response_time = (avg_response_time * (test_times - 1) + TIME_OUT_PENALTY) / test_times
                     score = (success_rate + float(test_times) / 500) / avg_response_time
-                    n = cursor.execute('UPDATE %s SET test_times = %d, failure_times = %d, success_rate = %.2f, avg_response_time = %.2f, score = %.2f WHERE content = "%s"' % (TABLE_NAME, test_times, failure_times, success_rate, avg_response_time, score, ip))
+                    n = cursor.execute('UPDATE %s SET test_times = %d, failure_times = %d, success_rate = %.2f, avg_response_time = %.2f, score = %.2f WHERE content = \'%s\'' % (TABLE_NAME, test_times, failure_times, success_rate, avg_response_time, score, ip))
                     conn.commit()
                     if n:
                         logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + \
@@ -83,7 +83,7 @@ def modify_score(ip, type, time, conn):
     elif type == 1:
         # pass the test
         try:
-            cursor.execute('SELECT * FROM %s WHERE content= "%s"' % (TABLE_NAME, ip))
+            cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, ip))
             q_result = cursor.fetchall()
             for r in q_result:
                 test_times = r[1] + 1
@@ -92,7 +92,7 @@ def modify_score(ip, type, time, conn):
                 success_rate = 1 - float(failure_times) / test_times
                 avg_response_time = (avg_response_time * (test_times - 1) + time) / test_times
                 score = (success_rate + float(test_times) / 500) / avg_response_time
-                n = cursor.execute('UPDATE %s SET test_times = %d, success_rate = %.2f, avg_response_time = %.2f, score = %.2f WHERE content = "%s"' %(TABLE_NAME, test_times, success_rate, avg_response_time, score, ip))
+                n = cursor.execute('UPDATE %s SET test_times = %d, success_rate = %.2f, avg_response_time = %.2f, score = %.2f WHERE content = \'%s\'' %(TABLE_NAME, test_times, success_rate, avg_response_time, score, ip))
                 conn.commit()
                 if n:
                     logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + \

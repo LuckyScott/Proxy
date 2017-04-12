@@ -49,7 +49,7 @@ def query_insert(ip_list, full_ip, conn):
     # Only when full_ip not in Database, insert it into ip_list.
     try:
         cursor = conn.cursor()
-        ipExist = cursor.execute('SELECT * FROM %s WHERE content= "%s"' % (TABLE_NAME, full_ip))
+        ipExist = cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, full_ip))
         if not ipExist:
             # ip not in database
             ip_list.append(full_ip)
@@ -397,9 +397,9 @@ def store(page):
     for item in proxies:
         print item
         try:
-            ipExist = cursor.execute('SELECT * FROM %s WHERE content= "%s"' % (TABLE_NAME, item))
+            ipExist = cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, item))
             if not ipExist:
-                n = cursor.execute('INSERT INTO %s VALUES ("%s", 1, 0, 1.0, 2.5, 0.0)' % (TABLE_NAME, item))
+                n = cursor.execute('INSERT INTO %s VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0)' % (TABLE_NAME, item))
                 conn.commit()
                 if n:
                     logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item + \
