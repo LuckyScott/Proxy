@@ -5,6 +5,7 @@ import time
 import datetime
 import random
 import logging
+import re
 from bs4 import BeautifulSoup
 from lxml import etree
 # import pymysql as mdb
@@ -310,23 +311,30 @@ def get_all_ip(page, conn):
 # Use http://lwons.com/wx to test if the server is available.
 def get_valid_proxies(proxies, timeout):
     # You may change the url by yourself if it didn't work.
-    url = 'http://lwons.com/wx'
+    # url = 'http://lwons.com/wx'
+    url = 'http://1212.ip138.com/ic.asp'
     results = []
     for p in proxies:
         proxy = {'http': 'http://'+p}
         succeed = False
+        true_ip = ''
         try:
             start = time.time()
             r = requests.get(url, proxies=proxy, timeout=timeout)
             end = time.time()
-            if r.text == 'default':
-                succeed = True
+            if r.text != '':
+                # print r.text
+                s = re.search(r'\[([\d\.]+)\]', r.text)
+                # print 'Matched:'+s.group(1)
+                if s:
+                    succeed = True
+                    true_ip = s.group(1)
         except Exception, e:
             print 'error:', p
             succeed = False
         if succeed:
-            print 'succeed: '+p+'\t'+str(end-start)
-            results.append(p)
+            print 'succeed: '+p+'\t true_ip:'+true_ip + '\t'+str(end-start)
+            results.append(p+'#'+true_ip)
         time.sleep(0.2)  # 0.5 # Avoid frequently crawling
     results = list(set(results))
     return results
@@ -391,24 +399,28 @@ def store(page):
             logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + \
                           " Use proxy to crawl web error! " + str(e))
     # proxies = get_proxies(page, 3, 2.5, 1200, conn)  # 6, 5, 2.5, 1200
-    proxies = get_proxies(page, 3, 2, 300, conn)   # sleep 5 minutes  per round
+    proxies = get_proxies(page, 1, 2, 300, conn)   # sleep 5 minutes  per round
     print "\n\n\n"
     print ">>>>>>>>>>>>>>>>>>>The Final Ip<<<<<<<<<<<<<<<<<<<<<<"
     for item in proxies:
         print item
+        item = item.split('#')
+        # filter locale ip and relocated one
+        if item[1] == '0' or item[1][0:11] == '111.144.113':
+            continue
         try:
-            ipExist = cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, item))
+            ipExist = cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, item[0]))
             if not ipExist:
-                n = cursor.execute('INSERT INTO %s (content, test_times, failure_times, success_rate, avg_response_time, score, created_at, updated_at) VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0, now(), now())' % (TABLE_NAME, item))
+                n = cursor.execute('INSERT INTO %s (content, test_times, failure_times, success_rate, avg_response_time, score, created_at, updated_at,true_ip,can_ths) VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0, now(), now(), \'%s\', TRUE)' % (TABLE_NAME, item[0],item[1]))
                 conn.commit()
                 if n:
-                    logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item + \
+                    logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item[0] + \
                                     " has been accepted as new ip in the " + str(n) + " row.")
                 else:
-                    logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item + \
+                    logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item[0] + \
                                   " insert failure!")
             else:
-                logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item + \
+                logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item[0] + \
                                 " is not been inserted as it already exists.")
         except Exception as e:
             logging.critical(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + str(e))
@@ -420,7 +432,7 @@ def store(page):
 
 def main():
     while True:
-        store(1)
+        store(15)
         time.sleep(24*3600)
 
 if __name__ == '__main__':
