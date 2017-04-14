@@ -508,15 +508,15 @@ def store( ):
         except Exception as e:
             logging.critical(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + str(e))
     conn.close()
-    flag = 1
-    if len(proxies) < 40:
-        time.sleep(24*3600)
+    # flag = 1
+    # if len(proxies) < 40:
+    #     time.sleep(24*3600)
 
 
 def main():
     while True:
         store()
-        time.sleep(24*3600)
+        time.sleep(2*3600)
 
 if __name__ == '__main__':
     main()
