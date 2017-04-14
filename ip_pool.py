@@ -8,6 +8,8 @@ import logging
 import re
 from bs4 import BeautifulSoup
 from lxml import etree
+import threading
+import ConfigParser
 # import pymysql as mdb
 # import MySQLdb as mdb
 
@@ -16,8 +18,22 @@ import psycopg2 as mdb
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-log_file = 'acquire_logger.log'
-logging.basicConfig(filename=log_file, level=logging.WARNING)
+cfg = ConfigParser.ConfigParser()
+cfg.read('proxy.conf')
+config = {}
+# config = dict(cfg.items('global'))
+config['log_file'] = cfg.get('global', 'log_file')
+config['check_round'] = cfg.getint('global', 'check_round')
+config['thread_num'] = cfg.getint('global', 'thread_num')
+config['page_start'] = cfg.getint('global', 'page_start')
+config['page_end'] = cfg.getint('global', 'page_end')
+config['check_can_ths_url'] = cfg.get('global', 'check_can_ths_url')
+config['user_agent'] = cfg.get('global', 'user_agent')
+
+config['dbconn'] = dict(cfg.items('dbconn'))
+config['table_name'] = cfg.get('dbtable', 'table_name')
+
+logging.basicConfig(filename=config['log_file'], level=logging.WARNING)
 
 # database config
 # config = {
@@ -29,29 +45,47 @@ logging.basicConfig(filename=log_file, level=logging.WARNING)
 #     'charset': 'utf8'
 # }
 
-# postgresql config
-config = {
-    'database': 'fdc_development',
-    'user': 'postgres',
-    'password': 'postgres',
-    'host': '127.0.0.1',
-    'port': 5432
-}
-TABLE_NAME = 'valid_ips'
-# conn = mdb.connect(**config)
-# cursor = conn.cursor()
-
+# TABLE_NAME = 'valid_ips'
 flag = 0
 proxy_list = []
-# ip_file = "ip.txt"
+valid_proxy_list = []
+threadLock = threading.Lock()
+threads = []
+global IsEnd
+IsEnd = False
+class ProxyWork (threading.Thread):
+    def __init__(self,  thread_id, work_task):
+        threading.Thread.__init__(self)
+        self.thread_id = thread_id
+        self.work_task = work_task
+        self.start()
+    def run(self):
+        # while True:
+            try:
+                print "IN Thread %d :  list len:%d EndFlag:%s" % (self.thread_id, len(self.work_task), str(IsEnd))
+                if len(self.work_task) > 0:
+                    valid_list = get_valid_proxies(self.work_task, 2)
+                    threadLock.acquire()
+                    valid_proxy_list.extend(valid_list)
+                    threadLock.release()
+                    del self.work_task[:]
+                # elif IsEnd:
+                else: 
+                    print "Exit thread...."
+                    # break
+            except Exception as e:
+                print str(e)
+                # break
 
 
 def query_insert(ip_list, full_ip, conn):
     # Only when full_ip not in Database, insert it into ip_list.
     try:
         cursor = conn.cursor()
-        ipExist = cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, full_ip))
-        if not ipExist:
+        cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (config['table_name'], full_ip))
+        results = cursor.fetchall()
+        rows = len(results)
+        if not rows:
             # ip not in database
             ip_list.append(full_ip)
             print full_ip + " is new!"
@@ -266,26 +300,26 @@ def get_mimi(page, conn):
 
 
 #  Get all ip in 0~page pages website
-def get_all_ip(page, conn):
+def get_all_ip(pages, conn):
     ip_list = []
     # mimi
     print ">>>>>mimi<<<<"
-    for i in range(page):
-        cur_ip_list = get_mimi(i+1, conn)
+    for i in pages:
+        cur_ip_list = get_mimi(i, conn)
         for item in cur_ip_list:
             ip_list.append(item)
 
     # 66ip
     print ">>>>>66ip<<<<"
-    for i in range(page):
-        cur_ip_list = get_66ip(i+1, conn)
+    for i in pages:
+        cur_ip_list = get_66ip(i, conn)
         for item in cur_ip_list:
             ip_list.append(item)
 
     # xici
     print ">>>>>xici<<<<"
-    for i in range(page):
-        cur_ip_list = get_xici(i+1, conn)
+    for i in pages:
+        cur_ip_list = get_xici(i, conn)
         for item in cur_ip_list:
             ip_list.append(item)
 
@@ -298,8 +332,8 @@ def get_all_ip(page, conn):
 
     # kuaidaili
     print ">>>>>kuaidaili<<<<"
-    for i in range(page):
-        cur_ip_list = get_kuaidaili(i+1, conn)
+    for i in pages:
+        cur_ip_list = get_kuaidaili(i, conn)
         for item in cur_ip_list:
             ip_list.append(item)
 
@@ -346,7 +380,7 @@ def get_the_best(round, proxies, timeout, sleeptime):
     With the strategy of N round test to find those secure
     and stable ip. During each round it will sleep a while to
     avoid a 'famous 15 minutes"
-    ========================================================"""
+    ========================================================"""    
     for i in range(round):
         print '\n'
         print ">>>>>>>Round\t"+str(i+1)+"<<<<<<<<<<"
@@ -355,63 +389,104 @@ def get_the_best(round, proxies, timeout, sleeptime):
             time.sleep(sleeptime)
     return proxies
 
-
-# def get_mimi_proxy(page, mimi_proxies, round, timeout, sleeptime):
-#     mimi_ip_list = []
-#     for i in range(page):
-#         cur_ip_list = get_mimi(i+1, mimi_proxies)
-#         time.sleep(1)
-#         for item in cur_ip_list:
-#             mimi_ip_list.append(item)
-#     for i in range(round):
-#         print '\n'
-#         print ">>>>>>>MiMi Round\t"+str(i+1)+"<<<<<<<<<<"
-#         mimi_ip_list = get_valid_proxies(mimi_ip_list, timeout)
-#         if i != round - 1:
-#             time.sleep(sleeptime)
-#     return mimi_ip_list
-
-
-def get_proxies(page, round, timeout, sleep, conn):
-    ip_list = get_all_ip(page, conn)
-    proxies = get_the_best(round, ip_list, timeout, sleep)  # The suggested parameters
+# use thread
+def get_the_best2(round, proxies, timeout, sleeptime):    
+    for i in range(round):
+        print '\n'
+        print ">>>>>>>Round\t"+str(i+1)+"<<<<<<<<<<"
+        # proxies = get_valid_proxies(proxies, timeout)
+        l = len(proxies)
+        thread_num = config['thread_num']  # thread num, 1-8
+        cnt = (l+thread_num-1)/thread_num
+        print "Per thread process num:%d" % (cnt)
+        global IsEnd
+        IsEnd = True
+        global valid_proxy_list
+        valid_proxy_list = []
+        threads = []
+        for p in range(thread_num):
+            begin = p*cnt
+            end = (p+1)*cnt     
+            threads.append(ProxyWork(p+1, proxies[begin:end]))
+        for t  in threads:
+            if t.isAlive():
+                t.join()
+        if i != round - 1:
+            time.sleep(sleeptime)   
+    proxies = valid_proxy_list
     return proxies
 
 
-def store(page):
+def get_proxies(pages, round, timeout, sleep, conn):
+    ip_list = get_all_ip(pages, conn)
+    start = time.time()
+    proxies = get_the_best2(round, ip_list, timeout, sleep)  # The suggested parameters
+    end = time.time()
+    print "Get best proxies num: %d and time used:%s" % (len(proxies),  str(end-start))
+    return proxies
+
+
+def check_can_ths(proxy, url,  user_agent):
+    proxies = {'http':'http://'+proxy}
+    succeed = False
+    try:
+        headers = {"User-Agent": user_agent}
+        r = requests.get(url, proxies=proxies, headers = headers, timeout=2)
+        print r.text
+        if r.text != '':
+            return True
+            # res = r.json()
+            # print repr(res)
+            # if res and res['errorCode'] == 0:
+            #     succeed = True
+    except Exception as e:
+        # succeed = False
+        return False
+    return False
+
+
+def store( ):
     global flag
     global proxy_list
     proxy_list = []
-    conn = mdb.connect(**config)
+    conn = mdb.connect(**config['dbconn'])
     cursor = conn.cursor()
-    if flag == 1:
-        # Use proxy to crawl web
-        try:
-            cursor.execute('select count(*) from  %s ' % TABLE_NAME)
-            length = 0
-            for r in cursor:
-                length = r[0]
-            cursor.execute('SELECT * FROM %s LIMIT %d, %d' % (TABLE_NAME, length-20, length-5))
-            result = cursor.fetchall()
-            for i in result:
-                proxy_list.append(i[0])
-        except Exception as e:
-            logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + \
-                          " Use proxy to crawl web error! " + str(e))
+    # if flag == 1:
+    #     # Use proxy to crawl web
+    #     try:
+    #         cursor.execute('select count(*) from  %s ' % config['table_name'])
+    #         length = 0
+    #         for r in cursor:
+    #             length = r[0]
+    #         cursor.execute('SELECT * FROM %s LIMIT %d, %d' % (config['table_name'], length-20, length-5))
+    #         result = cursor.fetchall()
+    #         for i in result:
+    #             proxy_list.append(i[0])
+    #     except Exception as e:
+    #         logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + \
+    #                       " Use proxy to crawl web error! " + str(e))
     # proxies = get_proxies(page, 3, 2.5, 1200, conn)  # 6, 5, 2.5, 1200
-    proxies = get_proxies(page, 1, 2, 300, conn)   # sleep 5 minutes  per round
+    pages = range(config['page_start'], config['page_end'] + 1)
+    proxies = get_proxies(pages, config['check_round'], 2, 300, conn)   # sleep 5 minutes  per round
     print "\n\n\n"
-    print ">>>>>>>>>>>>>>>>>>>The Final Ip<<<<<<<<<<<<<<<<<<<<<<"
+    print ">>>>>>>>>>>>>>>>>>>The Final Ip  Total num:%d <<<<<<<<<<<<<<<<<<<<<<" % len(proxies)
+    idx = 1
     for item in proxies:
-        print item
+        print "%d=>%s" % (idx, item)
+        idx += 1
         item = item.split('#')
         # filter locale ip and relocated one
         if item[1] == '0' or item[1][0:11] == '111.144.113':
             continue
         try:
-            ipExist = cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (TABLE_NAME, item[0]))
-            if not ipExist:
-                n = cursor.execute('INSERT INTO %s (content, test_times, failure_times, success_rate, avg_response_time, score, created_at, updated_at,true_ip,can_ths) VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0, now(), now(), \'%s\', TRUE)' % (TABLE_NAME, item[0],item[1]))
+            can_ths = 't' if check_can_ths(item[0], config['check_can_ths_url'], config['user_agent']) else 'f'
+            cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (config['table_name'], item[0]))
+            results = cursor.fetchall()
+            rows = len(results)
+            if not rows:
+                if can_ths == 'f':
+                    continue          
+                n = cursor.execute('INSERT INTO %s (content, test_times, failure_times, success_rate, avg_response_time, score, created_at, updated_at,true_ip,can_ths) VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0, now(), now(), \'%s\', \'%s\')' % (config['table_name'], item[0],item[1], can_ths))
                 conn.commit()
                 if n:
                     logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item[0] + \
@@ -422,6 +497,9 @@ def store(page):
             else:
                 logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item[0] + \
                                 " is not been inserted as it already exists.")
+                if can_ths == 'f':
+                    cursor.execute('DELETE FROM %s WHERE content= \'%s\'' % (config['table_name'], item[0]))
+                    conn.commit()
         except Exception as e:
             logging.critical(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + str(e))
     conn.close()
@@ -432,7 +510,7 @@ def store(page):
 
 def main():
     while True:
-        store(15)
+        store()
         time.sleep(24*3600)
 
 if __name__ == '__main__':
