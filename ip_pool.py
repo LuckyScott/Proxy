@@ -98,12 +98,17 @@ def query_insert(ip_list, full_ip, conn):
     except Exception as e:
         logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + str(e))
 
-
-# Get all <66ip> ip in a specified page
 def get_66ip(page, conn):
     ip_list = []
+    for i in range(20):
+        ip_list.extend( get_66ip_area(page, conn, i+1) )
+    return ip_list
+# Get all <66ip> ip in a specified page
+def get_66ip_area(page, conn, area_id):
+    ip_list = []
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko'}
-    url = 'http://www.66ip.cn/areaindex_1/'+str(page)+'.html'  # The ip resources url
+    url = 'http://www.66ip.cn/areaindex_'+str(area_id)+'/'+str(page)+'.html'  # The ip resources url
+    print(url)
     url_xpath = '/html/body/div[last()]//table//tr[position()>1]/td[1]/text()'
     port_xpath = '/html/body/div[last()]//table//tr[position()>1]/td[2]/text()'
     try:
@@ -432,7 +437,7 @@ def check_can_ths(proxy, url,  user_agent):
     try:
         headers = {"User-Agent": user_agent}
         r = requests.get(url, proxies=proxies, headers = headers, timeout=2)
-        print r.text
+        # print r.text
         if r.text != '':
             return True
             # res = r.json()
