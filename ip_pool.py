@@ -60,22 +60,18 @@ class ProxyWork (threading.Thread):
         self.work_task = work_task
         self.start()
     def run(self):
-        # while True:
-            try:
-                print "IN Thread %d :  list len:%d EndFlag:%s" % (self.thread_id, len(self.work_task), str(IsEnd))
-                if len(self.work_task) > 0:
-                    valid_list = get_valid_proxies(self.work_task, 2)
-                    threadLock.acquire()
-                    valid_proxy_list.extend(valid_list)
-                    threadLock.release()
-                    del self.work_task[:]
-                # elif IsEnd:
-                else: 
-                    print "Exit thread...."
-                    # break
-            except Exception as e:
-                print str(e)
-                # break
+        try:
+            # print "IN Thread %d :  list len:%d EndFlag:%s" % (self.thread_id, len(self.work_task), str(IsEnd))
+            if len(self.work_task) > 0:
+                valid_list = get_valid_proxies(self.work_task, 2)
+                threadLock.acquire()
+                valid_proxy_list.extend(valid_list)
+                threadLock.release()
+                del self.work_task[:]
+            else:
+                print "Exit thread...."
+        except Exception as e:
+            print str(e)
 
 
 def query_insert(ip_list, full_ip, conn):
@@ -98,17 +94,20 @@ def query_insert(ip_list, full_ip, conn):
     except Exception as e:
         logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + str(e))
 
+
 def get_66ip(page, conn):
     ip_list = []
     for i in range(20):
-        ip_list.extend( get_66ip_area(page, conn, i+1) )
+        ip_list.extend(get_66ip_area(page, conn, i+1))
     return ip_list
+
+
 # Get all <66ip> ip in a specified page
 def get_66ip_area(page, conn, area_id):
     ip_list = []
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko'}
     url = 'http://www.66ip.cn/areaindex_'+str(area_id)+'/'+str(page)+'.html'  # The ip resources url
-    print(url)
+    # print url
     url_xpath = '/html/body/div[last()]//table//tr[position()>1]/td[1]/text()'
     port_xpath = '/html/body/div[last()]//table//tr[position()>1]/td[2]/text()'
     try:
@@ -139,8 +138,8 @@ def get_66ip_area(page, conn, area_id):
                     ip_list.append(full_ip)
         return ip_list
     except Exception, e:
-            print 'get proxies error: ', e
-            return ip_list
+        print 'get proxies error: ', e
+        return ip_list
 
 
 # Get all #cn-proxy# ip in a specified page
@@ -179,8 +178,8 @@ def get_cnip(conn):
                     ip_list.append(full_ip)
         return ip_list
     except Exception, e:
-            print 'get proxies error: ', e
-            return ip_list
+        print 'get proxies error: ', e
+        return ip_list
 
 
 # Get all #xici# ip in a specified page
@@ -222,8 +221,8 @@ def get_xici(page, conn):
                     ip_list.append(full_ip)
         return ip_list
     except Exception, e:
-            print 'get proxies error: ', e
-            return ip_list
+        print 'get proxies error: ', e
+        return ip_list
 
 
 # Get all #kuaidaili# ip in a specified page
@@ -261,8 +260,8 @@ def get_kuaidaili(page, conn):
                     ip_list.append(full_ip)
         return ip_list
     except Exception, e:
-            print 'get proxies error: ', e
-            return ip_list
+        print 'get proxies error: ', e
+        return ip_list
 
 
 # Get all #mimi# ip in a specified page
@@ -300,8 +299,8 @@ def get_mimi(page, conn):
                     ip_list.append(full_ip)
         return ip_list
     except Exception, e:
-            print 'get proxies error: ', e
-            return ip_list
+        print 'get proxies error: ', e
+        return ip_list
 
 
 #  Get all ip in 0~page pages website
@@ -385,7 +384,7 @@ def get_the_best(round, proxies, timeout, sleeptime):
     With the strategy of N round test to find those secure
     and stable ip. During each round it will sleep a while to
     avoid a 'famous 15 minutes"
-    ========================================================"""    
+    ========================================================"""
     for i in range(round):
         print '\n'
         print ">>>>>>>Round\t"+str(i+1)+"<<<<<<<<<<"
@@ -394,8 +393,9 @@ def get_the_best(round, proxies, timeout, sleeptime):
             time.sleep(sleeptime)
     return proxies
 
+
 # use thread
-def get_the_best2(round, proxies, timeout, sleeptime):    
+def get_the_best2(round, proxies, timeout, sleeptime):
     for i in range(round):
         print '\n'
         print ">>>>>>>Round\t"+str(i+1)+"<<<<<<<<<<"
@@ -411,13 +411,13 @@ def get_the_best2(round, proxies, timeout, sleeptime):
         threads = []
         for p in range(thread_num):
             begin = p*cnt
-            end = (p+1)*cnt     
+            end = (p+1)*cnt
             threads.append(ProxyWork(p+1, proxies[begin:end]))
         for t  in threads:
             if t.isAlive():
                 t.join()
         if i != round - 1:
-            time.sleep(sleeptime)   
+            time.sleep(sleeptime)
     proxies = valid_proxy_list
     return proxies
 
@@ -427,16 +427,16 @@ def get_proxies(pages, round, timeout, sleep, conn):
     start = time.time()
     proxies = get_the_best2(round, ip_list, timeout, sleep)  # The suggested parameters
     end = time.time()
-    print "Get best proxies num: %d and time used:%s" % (len(proxies),  str(end-start))
+    print "Get best proxies num: %d and time used:%s" % (len(proxies), str(end-start))
     return proxies
 
 
-def check_can_ths(proxy, url,  user_agent):
+def check_can_ths(proxy, url, user_agent):
     proxies = {'http':'http://'+proxy}
     succeed = False
     try:
         headers = {"User-Agent": user_agent}
-        r = requests.get(url, proxies=proxies, headers = headers, timeout=2)
+        r = requests.get(url, proxies=proxies, headers=headers, timeout=2)
         # print r.text
         if r.text != '':
             return True
@@ -450,12 +450,14 @@ def check_can_ths(proxy, url,  user_agent):
     return False
 
 
-def store( ):
+def store():
     global flag
     global proxy_list
     proxy_list = []
     conn = mdb.connect(**config['dbconn'])
     cursor = conn.cursor()
+    cursor.execute('DELETE FROM %s where can_ths = FALSE' % (config['table_name']))
+    conn.commit()
     # if flag == 1:
     #     # Use proxy to crawl web
     #     try:
@@ -481,7 +483,7 @@ def store( ):
         idx += 1
         item = item.split('#')
         # filter locale ip and relocated one
-        if item[1] == '0' or item[1][0:11] == '111.144.113':
+        if item[1] == '0' or item[1][0:11] == '121.192.179' or item[1][0:10] == '210.34.216':
             continue
         try:
             can_ths = 't' if check_can_ths(item[0], config['check_can_ths_url'], config['user_agent']) else 'f'
@@ -490,8 +492,10 @@ def store( ):
             rows = len(results)
             if not rows:
                 if can_ths == 'f':
-                    continue          
-                n = cursor.execute('INSERT INTO %s (content, test_times, failure_times, success_rate, avg_response_time, score, created_at, updated_at,true_ip,can_ths) VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0, now(), now(), \'%s\', \'%s\')' % (config['table_name'], item[0],item[1], can_ths))
+                    continue
+                n = cursor.execute('INSERT INTO %s \
+                    (content, test_times, failure_times, success_rate, avg_response_time, score, created_at, updated_at,true_ip,can_ths) \
+                    VALUES (\'%s\', 1, 0, 1.0, 2.5, 0.0, now(), now(), \'%s\', \'%s\')' % (config['table_name'], item[0], item[1], can_ths))
                 conn.commit()
                 if n:
                     logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+": " + item[0] + \
@@ -516,7 +520,7 @@ def store( ):
 def main():
     while True:
         store()
-        time.sleep(2*3600)
+        time.sleep(1*3600)
 
 if __name__ == '__main__':
     main()
