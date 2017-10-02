@@ -350,7 +350,8 @@ def get_all_ip(pages, conn):
 def get_valid_proxies(proxies, timeout):
     # You may change the url by yourself if it didn't work.
     # url = 'http://lwons.com/wx'
-    url = 'http://1212.ip138.com/ic.asp'
+    # url = 'http://1212.ip138.com/ic.asp'
+    url = 'http://2017.ip138.com/ic.asp'
     results = []
     for p in proxies:
         proxy = {'http': 'http://'+p}
