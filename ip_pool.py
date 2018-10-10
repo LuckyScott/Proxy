@@ -351,10 +351,12 @@ def get_valid_proxies(proxies, timeout):
     # You may change the url by yourself if it didn't work.
     # url = 'http://lwons.com/wx'
     # url = 'http://1212.ip138.com/ic.asp'
-    url = 'http://2017.ip138.com/ic.asp'
+    # url = 'http://2018.ip138.com/ic.asp'
+    url = 'https://ip.cn/'
     results = []
-    for p in proxies:
-        proxy = {'http': 'http://'+p}
+    for s, p in proxies:
+        # proxy = {'http': 'http://'+p}
+        proxy = {s: '{}://{}'.format(s, p)}
         succeed = False
         true_ip = ''
         try:
@@ -363,7 +365,8 @@ def get_valid_proxies(proxies, timeout):
             end = time.time()
             if r.text != '':
                 # print r.text
-                s = re.search(r'\[([\d\.]+)\]', r.text)
+                # s = re.search(r'\[([\d\.]+)\]', r.text)
+                s = re.search(r'您现在的 IP：\<code\>([\d\.]+)\</code\>', r.text)
                 # print 'Matched:'+s.group(1)
                 if s:
                     succeed = True
@@ -488,7 +491,7 @@ def store():
             continue
         try:
             can_ths = 't' if check_can_ths(item[0], config['check_can_ths_url'], config['user_agent']) else 'f'
-            cursor.execute('SELECT * FROM %s WHERE content= \'%s\'' % (config['table_name'], item[0]))
+            cursor.execute('SELECT * FROM %s WHERE  content= \'%s\'' % (config['table_name'], item[0]))
             results = cursor.fetchall()
             rows = len(results)
             if not rows:
